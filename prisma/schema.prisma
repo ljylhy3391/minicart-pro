@@ -8,42 +8,23 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL")
 }
 
-model User {
-  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  email         String    @unique
-  name          String?
-  image         String?
-  role          UserRole  @default(CUSTOMER)
-  emailVerified DateTime? @map("email_verified")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
-
-  // Relations
-  accounts      Account[]
-  sessions      Session[]
-  cart          Cart?
-  orders        Order[]
-  reviews       Review[]
-  couponUsage   CouponUsage[]
-
-  @@map("users")
-}
-
+// NextAuth.js 테이블들
 model Account {
   id                String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   userId            String  @map("user_id") @db.Uuid
   type              String
   provider          String
   providerAccountId String  @map("provider_account_id")
-  refreshToken      String? @map("refresh_token") @db.Text
-  accessToken       String? @map("access_token") @db.Text
-  expiresAt         Int?    @map("expires_at")
-  tokenType         String? @map("token_type")
+  refresh_token     String? @map("refresh_token") @db.Text
+  access_token      String? @map("access_token") @db.Text
+  expires_at        Int?    @map("expires_at")
+  token_type        String? @map("token_type")
   scope             String?
-  idToken           String? @map("id_token") @db.Text
-  sessionState      String? @map("session_state")
+  id_token          String? @map("id_token") @db.Text
+  session_state     String? @map("session_state")
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")
 
@@ -60,7 +41,7 @@ model Session {
   expires      DateTime
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
-
+  
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("sessions")
@@ -72,66 +53,99 @@ model VerificationToken {
   expires    DateTime
   createdAt  DateTime @default(now()) @map("created_at")
 
-  @@id([identifier, token])
+  @@unique([identifier, token])
   @@map("verification_tokens")
 }
 
-model Category {
-  id          String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name        String
-  slug        String     @unique
-  description String?
-  imageUrl    String?    @map("image_url")
-  parentId    String?    @map("parent_id") @db.Uuid
-  sortOrder   Int        @default(0) @map("sort_order")
-  isActive    Boolean    @default(true) @map("is_active")
-  createdAt   DateTime   @default(now()) @map("created_at")
-  updatedAt   DateTime   @updatedAt @map("updated_at")
+// 사용자 관련 테이블
+model User {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name          String?
+  email         String    @unique
+  emailVerified DateTime? @map("email_verified")
+  image         String?
+  role          UserRole  @default(CUSTOMER)
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
 
-  // Relations
-  parent   Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
-  children Category[] @relation("CategoryHierarchy")
-  products Product[]
+  accounts Account[]
+  sessions Session[]
+  orders   Order[]
+  reviews  Review[]
+  cart     Cart?
+  couponUsage CouponUsage[]
+
+  @@map("users")
+}
+
+enum UserRole {
+  CUSTOMER @map("customer")
+  ADMIN    @map("admin")
+  SELLER   @map("seller")
+}
+
+// 상품 관련 테이블
+model Category {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String
+  slug        String    @unique
+  description String?   @db.Text
+  imageUrl    String?   @map("image_url") @db.Text
+  parentId    String?   @map("parent_id") @db.Uuid
+  sortOrder   Int       @default(0) @map("sort_order")
+  isActive    Boolean   @default(true) @map("is_active")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  products  Product[]
+  parent    Category?  @relation("CategoryParent", fields: [parentId], references: [id])
+  children  Category[] @relation("CategoryParent")
 
   @@map("categories")
 }
 
 model Product {
-  id               String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name             String
-  slug             String        @unique
-  description      String?
-  shortDescription String?       @map("short_description")
-  price            Decimal       @db.Decimal(10, 2)
-  comparePrice     Decimal?      @map("compare_price") @db.Decimal(10, 2)
-  costPrice        Decimal?      @map("cost_price") @db.Decimal(10, 2)
-  sku              String?       @unique
-  barcode          String?
-  weight           Decimal?      @db.Decimal(8, 2)
-  dimensions       Json?
-  categoryId       String?       @map("category_id") @db.Uuid
-  brand            String?
-  status           ProductStatus @default(DRAFT)
-  featured         Boolean       @default(false)
-  metaTitle        String?       @map("meta_title")
-  metaDescription  String?       @map("meta_description")
-  tags             String[]
-  createdAt        DateTime      @default(now()) @map("created_at")
-  updatedAt        DateTime      @updatedAt @map("updated_at")
+  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name            String
+  slug            String         @unique
+  description     String?        @db.Text
+  shortDescription String?       @map("short_description") @db.Text
+  price           Decimal        @db.Decimal(10, 2)
+  comparePrice    Decimal?       @map("compare_price") @db.Decimal(10, 2)
+  costPrice       Decimal?       @map("cost_price") @db.Decimal(10, 2)
+  sku             String?        @unique
+  barcode         String?
+  weight          Decimal?       @db.Decimal(10, 2)
+  dimensions      Json?
+  categoryId      String?        @map("category_id") @db.Uuid
+  brand           String?
+  status          ProductStatus  @default(DRAFT)
+  featured        Boolean        @default(false)
+  metaTitle       String?        @map("meta_title")
+  metaDescription String?        @map("meta_description") @db.Text
+  tags            String[]
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
 
-  // Relations
-  category       Category?        @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  images         ProductImage[]
-  variants       ProductVariant[]
-  reviews        Review[]
+  category    Category?        @relation(fields: [categoryId], references: [id])
+  images      ProductImage[]
+  variants    ProductVariant[]
+  reviews     Review[]
 
   @@map("products")
+}
+
+enum ProductStatus {
+  DRAFT     @map("draft")
+  ACTIVE    @map("active")
+  INACTIVE  @map("inactive")
+  ARCHIVED  @map("archived")
 }
 
 model ProductImage {
   id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   productId String   @map("product_id") @db.Uuid
-  url       String
+  url       String   @db.Text
   altText   String?  @map("alt_text")
   sortOrder Int      @default(0) @map("sort_order")
   isPrimary Boolean  @default(false) @map("is_primary")
@@ -150,46 +164,45 @@ model ProductVariant {
   price        Decimal? @db.Decimal(10, 2)
   comparePrice Decimal? @map("compare_price") @db.Decimal(10, 2)
   costPrice    Decimal? @map("cost_price") @db.Decimal(10, 2)
-  weight       Decimal? @db.Decimal(8, 2)
+  weight       Decimal? @db.Decimal(10, 2)
   attributes   Json
-  imageUrl     String?  @map("image_url")
+  imageUrl     String?  @map("image_url") @db.Text
   sortOrder    Int      @default(0) @map("sort_order")
   isActive     Boolean  @default(true) @map("is_active")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  // Relations
-  product   Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
-  inventory Inventory?
-  cartItems CartItem[]
-  orderItems OrderItem[]
+  product     Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  inventory   Inventory?
+  orderItems  OrderItem[]
+  cartItems   CartItem[]
 
   @@map("product_variants")
 }
 
 model Inventory {
-  id                  String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  variantId           String  @unique @map("variant_id") @db.Uuid
-  quantity            Int     @default(0)
-  reservedQuantity    Int     @default(0) @map("reserved_quantity")
-  lowStockThreshold   Int     @default(10) @map("low_stock_threshold")
-  location            String?
-  createdAt           DateTime @default(now()) @map("created_at")
-  updatedAt           DateTime @updatedAt @map("updated_at")
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  variantId         String   @unique @map("variant_id") @db.Uuid
+  quantity          Int      @default(0)
+  reservedQuantity  Int      @default(0) @map("reserved_quantity")
+  lowStockThreshold Int      @default(10) @map("low_stock_threshold")
+  location          String?
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
 
   variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
 
   @@map("inventory")
 }
 
+// 장바구니 테이블
 model Cart {
-  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId    String?  @unique @map("user_id") @db.Uuid
-  sessionId String?  @unique @map("session_id")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String?   @unique @map("user_id") @db.Uuid
+  sessionId  String?   @unique @map("session_id")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
 
-  // Relations
   user  User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
   items CartItem[]
 
@@ -199,44 +212,42 @@ model Cart {
 model CartItem {
   id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   cartId    String   @map("cart_id") @db.Uuid
-  variantId String   @map("variant_id") @db.Uuid
+  variantId String?  @map("variant_id") @db.Uuid
   quantity  Int      @default(1)
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  // Relations
   cart    Cart           @relation(fields: [cartId], references: [id], onDelete: Cascade)
-  variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  variant ProductVariant? @relation(fields: [variantId], references: [id])
 
-  @@unique([cartId, variantId])
   @@map("cart_items")
 }
 
+// 주문 관련 테이블
 model Order {
-  id              String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  orderNumber     String      @unique @map("order_number")
-  userId          String?     @map("user_id") @db.Uuid
-  status          OrderStatus @default(PENDING)
-  subtotal        Decimal     @db.Decimal(10, 2)
-  taxAmount       Decimal     @default(0) @map("tax_amount") @db.Decimal(10, 2)
-  shippingAmount  Decimal     @default(0) @map("shipping_amount") @db.Decimal(10, 2)
-  discountAmount  Decimal     @default(0) @map("discount_amount") @db.Decimal(10, 2)
-  totalAmount     Decimal     @map("total_amount") @db.Decimal(10, 2)
-  currency        String      @default("KRW")
-  shippingAddress Json        @map("shipping_address")
-  billingAddress  Json?       @map("billing_address")
-  notes           String?
-  internalNotes   String?     @map("internal_notes")
-  confirmedAt     DateTime?   @map("confirmed_at")
-  shippedAt       DateTime?   @map("shipped_at")
-  deliveredAt     DateTime?   @map("delivered_at")
-  cancelledAt     DateTime?   @map("cancelled_at")
-  createdAt       DateTime    @default(now()) @map("created_at")
-  updatedAt       DateTime    @updatedAt @map("updated_at")
+  id             String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderNumber    String      @unique @map("order_number")
+  userId         String?     @map("user_id") @db.Uuid
+  status         OrderStatus @default(PENDING)
+  subtotal       Decimal     @db.Decimal(10, 2)
+  taxAmount      Decimal     @default(0) @map("tax_amount") @db.Decimal(10, 2)
+  shippingAmount Decimal     @default(0) @map("shipping_amount") @db.Decimal(10, 2)
+  discountAmount Decimal     @default(0) @map("discount_amount") @db.Decimal(10, 2)
+  totalAmount    Decimal     @map("total_amount") @db.Decimal(10, 2)
+  currency       String      @default("KRW")
+  shippingAddress Json       @map("shipping_address")
+  billingAddress Json?       @map("billing_address")
+  notes          String?     @db.Text
+  internalNotes  String?     @map("internal_notes") @db.Text
+  confirmedAt    DateTime?   @map("confirmed_at")
+  shippedAt      DateTime?   @map("shipped_at")
+  deliveredAt    DateTime?   @map("delivered_at")
+  cancelledAt    DateTime?   @map("cancelled_at")
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
 
-  // Relations
-  user         User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
-  items        OrderItem[]
+  user         User?         @relation(fields: [userId], references: [id])
+  orderItems   OrderItem[]
   payments     Payment[]
   reviews      Review[]
   couponUsage  CouponUsage[]
@@ -244,41 +255,49 @@ model Order {
   @@map("orders")
 }
 
-model OrderItem {
-  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  orderId      String   @map("order_id") @db.Uuid
-  variantId    String?  @map("variant_id") @db.Uuid
-  productName  String   @map("product_name")
-  variantName  String?  @map("variant_name")
-  sku          String?
-  price        Decimal  @db.Decimal(10, 2)
-  quantity     Int
-  totalPrice   Decimal  @map("total_price") @db.Decimal(10, 2)
-  createdAt    DateTime @default(now()) @map("created_at")
+enum OrderStatus {
+  PENDING    @map("pending")
+  CONFIRMED  @map("confirmed")
+  PROCESSING @map("processing")
+  SHIPPED    @map("shipped")
+  DELIVERED  @map("delivered")
+  CANCELLED  @map("cancelled")
+  REFUNDED   @map("refunded")
+}
 
-  // Relations
+model OrderItem {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId     String   @map("order_id") @db.Uuid
+  variantId   String?  @map("variant_id") @db.Uuid
+  productName String   @map("product_name")
+  variantName String?  @map("variant_name")
+  sku         String?
+  price       Decimal  @db.Decimal(10, 2)
+  quantity    Int
+  totalPrice  Decimal  @map("total_price") @db.Decimal(10, 2)
+  createdAt   DateTime @default(now()) @map("created_at")
+
   order   Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  variant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  variant ProductVariant? @relation(fields: [variantId], references: [id])
 
   @@map("order_items")
 }
 
+// 결제 테이블
 model Payment {
   id                    String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   orderId               String        @map("order_id") @db.Uuid
-  impUid                String        @unique @map("imp_uid") // 아임포트 거래 고유 ID
-  merchantUid           String        @map("merchant_uid") // 주문번호
+  paymentIntentId       String        @unique @map("payment_intent_id")
   amount                Decimal       @db.Decimal(10, 2)
   currency              String        @default("KRW")
   status                PaymentStatus @default(PENDING)
-  paymentMethod         String?       @map("payment_method") // card, vbank, phone, kakao, naver, payco, toss
+  paymentMethod         String?       @map("payment_method")
   paymentMethodDetails  Json?         @map("payment_method_details")
   failureReason         String?       @map("failure_reason") @db.Text
   refundAmount          Decimal       @default(0) @map("refund_amount") @db.Decimal(10, 2)
   refundReason          String?       @map("refund_reason") @db.Text
-  paidAt                DateTime?     @map("paid_at")
-  failedAt              DateTime?     @map("failed_at")
-  cancelledAt           DateTime?     @map("cancelled_at")
+  stripeChargeId        String?       @map("stripe_charge_id")
+  stripeCustomerId      String?       @map("stripe_customer_id")
   createdAt             DateTime      @default(now()) @map("created_at")
   updatedAt             DateTime      @updatedAt @map("updated_at")
 
@@ -287,46 +306,59 @@ model Payment {
   @@map("payments")
 }
 
-model Coupon {
-  id              String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  code            String      @unique
-  name            String
-  description     String?
-  type            CouponType
-  value           Decimal     @db.Decimal(10, 2)
-  minimumAmount   Decimal?    @map("minimum_amount") @db.Decimal(10, 2)
-  maximumDiscount Decimal?    @map("maximum_discount") @db.Decimal(10, 2)
-  usageLimit      Int?        @map("usage_limit")
-  usedCount       Int         @default(0) @map("used_count")
-  isActive        Boolean     @default(true) @map("is_active")
-  startsAt        DateTime?   @map("starts_at")
-  expiresAt       DateTime?   @map("expires_at")
-  createdAt       DateTime    @default(now()) @map("created_at")
-  updatedAt       DateTime    @updatedAt @map("updated_at")
+enum PaymentStatus {
+  PENDING    @map("pending")
+  PROCESSING @map("processing")
+  SUCCEEDED  @map("succeeded")
+  FAILED     @map("failed")
+  CANCELLED  @map("cancelled")
+  REFUNDED   @map("refunded")
+}
 
-  // Relations
-  usage CouponUsage[]
+// 쿠폰 테이블
+model Coupon {
+  id             String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code           String     @unique
+  name           String
+  description    String?    @db.Text
+  type           CouponType
+  value          Decimal    @db.Decimal(10, 2)
+  minimumAmount  Decimal?   @map("minimum_amount") @db.Decimal(10, 2)
+  maximumDiscount Decimal?  @map("maximum_discount") @db.Decimal(10, 2)
+  usageLimit     Int?       @map("usage_limit")
+  usedCount      Int        @default(0) @map("used_count")
+  isActive       Boolean    @default(true) @map("is_active")
+  startsAt       DateTime?  @map("starts_at")
+  expiresAt      DateTime?  @map("expires_at")
+  createdAt      DateTime   @default(now()) @map("created_at")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
+
+  usages CouponUsage[]
 
   @@map("coupons")
 }
 
+enum CouponType {
+  PERCENTAGE    @map("percentage")
+  FIXED_AMOUNT  @map("fixed_amount")
+}
+
 model CouponUsage {
-  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  couponId      String   @map("coupon_id") @db.Uuid
-  userId        String   @map("user_id") @db.Uuid
-  orderId       String   @map("order_id") @db.Uuid
-  discountAmount Decimal @map("discount_amount") @db.Decimal(10, 2)
-  usedAt        DateTime @default(now()) @map("used_at")
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  couponId       String   @map("coupon_id") @db.Uuid
+  userId         String?  @map("user_id") @db.Uuid
+  orderId        String?  @map("order_id") @db.Uuid
+  discountAmount Decimal  @map("discount_amount") @db.Decimal(10, 2)
+  usedAt         DateTime @default(now()) @map("used_at")
 
-  // Relations
-  coupon Coupon @relation(fields: [couponId], references: [id], onDelete: Cascade)
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  order  Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  coupon Coupon  @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  user   User?   @relation(fields: [userId], references: [id])
+  order  Order?  @relation(fields: [orderId], references: [id])
 
-  @@unique([couponId, userId, orderId])
   @@map("coupon_usage")
 }
 
+// 리뷰 테이블
 model Review {
   id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   productId    String   @map("product_id") @db.Uuid
@@ -341,60 +373,10 @@ model Review {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  // Relations
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  order   Order?  @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  order   Order?  @relation(fields: [orderId], references: [id])
 
-  @@unique([productId, userId, orderId])
+  @@unique([productId, userId])
   @@map("reviews")
 }
-
-// Enums
-enum UserRole {
-  CUSTOMER
-  ADMIN
-  SELLER
-
-  @@map("user_role")
-}
-
-enum ProductStatus {
-  DRAFT
-  ACTIVE
-  INACTIVE
-  ARCHIVED
-
-  @@map("product_status")
-}
-
-enum OrderStatus {
-  PENDING
-  CONFIRMED
-  PROCESSING
-  SHIPPED
-  DELIVERED
-  CANCELLED
-  REFUNDED
-
-  @@map("order_status")
-}
-
-enum PaymentStatus {
-  PENDING
-  PROCESSING
-  SUCCEEDED
-  FAILED
-  CANCELLED
-  REFUNDED
-
-  @@map("payment_status")
-}
-
-enum CouponType {
-  PERCENTAGE
-  FIXED_AMOUNT
-
-  @@map("coupon_type")
-}
-
