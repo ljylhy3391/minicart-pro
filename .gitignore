@@ -40,6 +40,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# AI related files
+# AI related files and documentation
 ENV_SETUP.md
 PROJECT_STATUS.md
+RLS-TROUBLESHOOTING.md
+rls-issues-analysis.md
+shrimp-rules.md
