@@ -243,6 +243,7 @@ model Order {
   shippedAt      DateTime?   @map("shipped_at")
   deliveredAt    DateTime?   @map("delivered_at")
   cancelledAt    DateTime?   @map("cancelled_at")
+  refundedAt     DateTime?   @map("refunded_at")
   createdAt      DateTime    @default(now()) @map("created_at")
   updatedAt      DateTime    @updatedAt @map("updated_at")
 
@@ -294,14 +295,18 @@ model Payment {
   paymentMethod         String?       @map("payment_method")
   paymentMethodDetails  Json?         @map("payment_method_details")
   failureReason         String?       @map("failure_reason") @db.Text
-  refundAmount          Decimal       @default(0) @map("refund_amount") @db.Decimal(10, 2)
+  refundAmount          Decimal?      @map("refund_amount") @db.Decimal(10, 2)
+  refundedAt            DateTime?     @map("refunded_at")
   refundReason          String?       @map("refund_reason") @db.Text
+  refundId              String?       @map("refund_id")
+  paidAt                DateTime?     @map("paid_at")
   stripeChargeId        String?       @map("stripe_charge_id")
   stripeCustomerId      String?       @map("stripe_customer_id")
   createdAt             DateTime      @default(now()) @map("created_at")
   updatedAt             DateTime      @updatedAt @map("updated_at")
 
   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  refunds Refund[]
 
   @@map("payments")
 }
@@ -313,6 +318,7 @@ enum PaymentStatus {
   FAILED     @map("failed")
   CANCELLED  @map("cancelled")
   REFUNDED   @map("refunded")
+  PARTIALLY_REFUNDED @map("partially_refunded")
 }
 
 // 쿠폰 테이블
@@ -379,4 +385,30 @@ model Review {
 
   @@unique([productId, userId])
   @@map("reviews")
+}
+
+// 환불 테이블
+model Refund {
+  id           String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  paymentId    String        @map("payment_id") @db.Uuid
+  amount       Decimal       @db.Decimal(10, 2)
+  reason       String        @db.Text
+  status       RefundStatus  @default(PENDING)
+  refundId     String?       @unique @map("refund_id")
+  processedAt  DateTime?     @map("processed_at")
+  failureReason String?      @map("failure_reason") @db.Text
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@map("refunds")
+}
+
+enum RefundStatus {
+  PENDING    @map("pending")
+  PROCESSING @map("processing")
+  COMPLETED  @map("completed")
+  FAILED     @map("failed")
+  CANCELLED  @map("cancelled")
 }

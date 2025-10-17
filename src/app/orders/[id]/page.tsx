@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { UserMenu } from '@/components/auth/user-menu'
 import { PaymentModal } from '@/components/payment/payment-modal'
+import { RefundButton } from '@/components/payment/refund-button'
 import Link from 'next/link'
 import Image from 'next/image'
 
@@ -35,6 +36,14 @@ interface Order {
   shippingAddress: string | null
   paymentMethod: string | null
   paymentStatus: string | null
+  payment?: {
+    id: string
+    amount: number
+    status: string
+    paymentMethod: string | null
+    refundAmount?: number
+    refundedAt?: string
+  }
   createdAt: string
   updatedAt: string
 }
@@ -392,6 +401,27 @@ export default function OrderDetailPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* 환불 섹션 */}
+          {order.payment && order.payment.status === 'SUCCEEDED' && (
+            <div className="space-y-4">
+              <h2 className="text-lg font-semibold text-gray-900">환불 관리</h2>
+              <RefundButton
+                paymentId={order.payment.id}
+                amount={order.payment.amount}
+                isRefundable={
+                  order.payment.status === 'SUCCEEDED' &&
+                  !order.payment.refundedAt
+                }
+                onRefundSuccess={() => {
+                  fetchOrder() // 주문 정보 새로고침
+                }}
+                onRefundError={(error) => {
+                  console.error('환불 오류:', error)
+                }}
+              />
+            </div>
+          )}
 
           {/* 액션 버튼 */}
           <div className="flex justify-end space-x-3">
