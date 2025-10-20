@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { slugify } from '@/lib/utils'
 
 // GET /api/products - 상품 목록 조회
 export async function GET(request: NextRequest) {
@@ -61,23 +62,41 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { name, description, price, categoryId, images, variants } = body
 
+    // slug 자동 생성
+    const slug = slugify(name)
+
+    // 중복 slug 확인 및 처리
+    let finalSlug = slug
+    let counter = 1
+    while (true) {
+      const existingProduct = await prisma.product.findUnique({
+        where: { slug: finalSlug },
+      })
+      if (!existingProduct) break
+      finalSlug = `${slug}-${counter}`
+      counter++
+    }
+
     const product = await prisma.product.create({
       data: {
         name,
+        slug: finalSlug,
         description,
         price,
         categoryId,
         images: {
           create: images?.map((image: any) => ({
             url: image.url,
-            alt: image.alt || name,
+            altText: image.alt || name,
+            sortOrder: 1,
+            isPrimary: true,
           })),
         },
         variants: {
           create: variants?.map((variant: any) => ({
             name: variant.name,
-            value: variant.value,
-            priceModifier: variant.priceModifier || 0,
+            attributes: variant.attributes || {},
+            sortOrder: 1,
           })),
         },
       },

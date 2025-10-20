@@ -61,6 +61,14 @@ export default function Home() {
                 계정 정보와 구매 통계를 확인하세요
               </p>
             </Link>
+            <Link
+              href="/admin/products"
+              className="rounded-lg border bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
+            >
+              <div className="mb-4 text-4xl">⚙️</div>
+              <h3 className="mb-2 text-lg font-semibold">관리자</h3>
+              <p className="text-gray-600">상품 관리 및 이미지 업로드</p>
+            </Link>
           </div>
         </div>
       </main>

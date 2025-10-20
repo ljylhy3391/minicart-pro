@@ -1,5 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
+import {
+  uploadToR2,
+  generateFileName,
+  validateImageFile,
+  listImagesFromR2,
+  deleteFromR2,
+} from '@/lib/r2'
+
+// R2 설정이 없을 때 임시 모킹 함수들
+import {
+  uploadToR2 as mockUploadToR2,
+  generateFileName as mockGenerateFileName,
+  validateImageFile as mockValidateImageFile,
+  listImagesFromR2 as mockListImagesFromR2,
+  deleteFromR2 as mockDeleteFromR2,
+} from '@/lib/r2-mock'
 
 // POST /api/upload - 이미지 업로드
 export async function POST(request: NextRequest) {
@@ -17,43 +33,51 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No file uploaded' }, { status: 400 })
     }
 
-    // 파일 타입 검증
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
-    if (!allowedTypes.includes(file.type)) {
-      return NextResponse.json(
-        {
-          error:
-            'Invalid file type. Only JPEG, PNG, WebP, and GIF are allowed.',
-        },
-        { status: 400 }
-      )
+    // R2 설정 확인 (R2_* 또는 CLOUDFLARE_* 모두 지원)
+    const hasR2Config =
+      (process.env.R2_ACCOUNT_ID || process.env.CLOUDFLARE_ACCOUNT_ID) &&
+      (process.env.R2_ACCESS_KEY_ID || process.env.CLOUDFLARE_ACCESS_KEY_ID)
+
+    // 파일 유효성 검사
+    const validation = hasR2Config
+      ? validateImageFile(file)
+      : mockValidateImageFile(file)
+    if (!validation.valid) {
+      return NextResponse.json({ error: validation.error }, { status: 400 })
     }
 
-    // 파일 크기 검증 (10MB 제한)
-    const maxSize = 10 * 1024 * 1024 // 10MB
-    if (file.size > maxSize) {
+    // 파일명 생성
+    const fileName = hasR2Config
+      ? generateFileName(file.name)
+      : mockGenerateFileName(file.name)
+
+    // Cloudflare R2에 업로드 (또는 모킹)
+    const uploadResult = hasR2Config
+      ? await uploadToR2(file, fileName)
+      : await mockUploadToR2(file, fileName)
+
+    if (!uploadResult.success) {
       return NextResponse.json(
-        { error: 'File size too large. Maximum size is 10MB.' },
-        { status: 400 }
+        { error: uploadResult.error || 'Upload failed' },
+        { status: 500 }
       )
     }
-
-    // TODO: 실제 구현 시 Cloudflare R2 또는 Supabase Storage 사용
-    // 현재는 임시로 파일 정보만 반환
-    const fileName = `${Date.now()}-${file.name}`
-
-    // 실제 구현 예시:
-    // const imageUrl = await uploadToCloudflareR2(file, fileName)
-    // 또는
-    // const imageUrl = await uploadToSupabaseStorage(file, fileName)
-
-    // 임시 URL 반환 (실제 구현 시 위의 코드 사용)
-    const imageUrl = `/uploads/${fileName}`
 
     return NextResponse.json({
       success: true,
-      imageUrl,
-      fileName,
+      imageUrl: uploadResult.imageUrl,
+      // 퍼블릭 URL 접근이 막혀 있을 수 있으므로 즉시 미리보기 가능한 서명 URL도 함께 제공
+      previewUrl: uploadResult.fileName
+        ? await (async () => {
+            try {
+              const { getSignedUrlForKey } = await import('@/lib/r2')
+              return await getSignedUrlForKey(uploadResult.fileName)
+            } catch {
+              return undefined
+            }
+          })()
+        : undefined,
+      fileName: uploadResult.fileName,
       size: file.size,
       type: file.type,
     })
@@ -72,15 +96,75 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // TODO: 실제 구현 시 저장소에서 사용자의 이미지 목록 조회
-    // 현재는 빈 배열 반환
+    const { searchParams } = new URL(request.url)
+    const folder = searchParams.get('folder') || 'products'
+
+    // R2 설정 확인 (R2_* 또는 CLOUDFLARE_* 모두 지원)
+    const hasR2Config =
+      (process.env.R2_ACCOUNT_ID || process.env.CLOUDFLARE_ACCOUNT_ID) &&
+      (process.env.R2_ACCESS_KEY_ID || process.env.CLOUDFLARE_ACCESS_KEY_ID)
+
+    // Cloudflare R2에서 이미지 목록 조회 (또는 모킹)
+    const images = hasR2Config
+      ? await listImagesFromR2(folder)
+      : await mockListImagesFromR2(folder)
+
     return NextResponse.json({
-      images: [],
+      images,
     })
   } catch (error) {
     console.error('Error fetching images:', error)
     return NextResponse.json(
       { error: 'Failed to fetch images' },
+      { status: 500 }
+    )
+  }
+}
+
+// DELETE /api/upload - 이미지 삭제
+export async function DELETE(request: NextRequest) {
+  try {
+    const session = await auth()
+
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { searchParams } = new URL(request.url)
+    const fileName = searchParams.get('fileName')
+
+    if (!fileName) {
+      return NextResponse.json(
+        { error: 'File name is required' },
+        { status: 400 }
+      )
+    }
+
+    // R2 설정 확인 (R2_* 또는 CLOUDFLARE_* 모두 지원)
+    const hasR2Config =
+      (process.env.R2_ACCOUNT_ID || process.env.CLOUDFLARE_ACCOUNT_ID) &&
+      (process.env.R2_ACCESS_KEY_ID || process.env.CLOUDFLARE_ACCESS_KEY_ID)
+
+    // Cloudflare R2에서 이미지 삭제 (또는 모킹)
+    const success = hasR2Config
+      ? await deleteFromR2(fileName)
+      : await mockDeleteFromR2(fileName)
+
+    if (!success) {
+      return NextResponse.json(
+        { error: 'Failed to delete image' },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Image deleted successfully',
+    })
+  } catch (error) {
+    console.error('Error deleting image:', error)
+    return NextResponse.json(
+      { error: 'Failed to delete image' },
       { status: 500 }
     )
   }
