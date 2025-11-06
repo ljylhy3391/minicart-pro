@@ -42,6 +42,11 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        coupang: {
+          DEFAULT: "#E31E24",
+          light: "#FF3B42",
+          dark: "#C41A1F",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",

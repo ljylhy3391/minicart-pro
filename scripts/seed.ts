@@ -5,42 +5,61 @@ const prisma = new PrismaClient()
 async function main() {
   console.log('🌱 테스트 데이터 생성 시작...')
 
-  // 1. 카테고리 생성
+  // 1. 카테고리 생성 (이미 있으면 건너뛰기)
   console.log('📂 카테고리 생성 중...')
-  const electronics = await prisma.category.create({
-    data: {
-      name: '전자제품',
-      slug: 'electronics',
-      description: '다양한 전자제품을 만나보세요',
-      sortOrder: 1,
-    },
+  let electronics = await prisma.category.findUnique({
+    where: { slug: 'electronics' },
   })
+  if (!electronics) {
+    electronics = await prisma.category.create({
+      data: {
+        name: '전자제품',
+        slug: 'electronics',
+        description: '다양한 전자제품을 만나보세요',
+        sortOrder: 1,
+      },
+    })
+  }
 
-  const fashion = await prisma.category.create({
-    data: {
-      name: '패션',
-      slug: 'fashion',
-      description: '트렌디한 패션 아이템',
-      sortOrder: 2,
-    },
+  let fashion = await prisma.category.findUnique({
+    where: { slug: 'fashion' },
   })
+  if (!fashion) {
+    fashion = await prisma.category.create({
+      data: {
+        name: '패션',
+        slug: 'fashion',
+        description: '트렌디한 패션 아이템',
+        sortOrder: 2,
+      },
+    })
+  }
 
-  const home = await prisma.category.create({
-    data: {
-      name: '홈&리빙',
-      slug: 'home-living',
-      description: '편리한 홈리빙 제품',
-      sortOrder: 3,
-    },
+  let home = await prisma.category.findUnique({
+    where: { slug: 'home-living' },
   })
+  if (!home) {
+    home = await prisma.category.create({
+      data: {
+        name: '홈&리빙',
+        slug: 'home-living',
+        description: '편리한 홈리빙 제품',
+        sortOrder: 3,
+      },
+    })
+  }
 
   console.log('✅ 카테고리 생성 완료')
 
-  // 2. 상품 생성
+  // 2. 상품 생성 (이미 있으면 건너뛰기)
   console.log('📦 상품 생성 중...')
 
   // 스마트폰
-  const smartphone = await prisma.product.create({
+  let smartphone = await prisma.product.findUnique({
+    where: { slug: 'galaxy-s24' },
+  })
+  if (!smartphone) {
+    smartphone = await prisma.product.create({
     data: {
       name: '갤럭시 S24',
       slug: 'galaxy-s24',
@@ -85,9 +104,14 @@ async function main() {
       },
     },
   })
+  }
 
   // 무선 이어폰
-  const earbuds = await prisma.product.create({
+  let earbuds = await prisma.product.findUnique({
+    where: { slug: 'airpods-pro-3rd' },
+  })
+  if (!earbuds) {
+    earbuds = await prisma.product.create({
     data: {
       name: '에어팟 프로 3세대',
       slug: 'airpods-pro-3rd',
@@ -124,9 +148,14 @@ async function main() {
       },
     },
   })
+  }
 
   // 티셔츠
-  const tshirt = await prisma.product.create({
+  let tshirt = await prisma.product.findUnique({
+    where: { slug: 'basic-cotton-tshirt' },
+  })
+  if (!tshirt) {
+    tshirt = await prisma.product.create({
     data: {
       name: '기본 면 티셔츠',
       slug: 'basic-cotton-tshirt',
@@ -178,9 +207,14 @@ async function main() {
       },
     },
   })
+  }
 
   // 커피 머신
-  const coffeeMachine = await prisma.product.create({
+  let coffeeMachine = await prisma.product.findUnique({
+    where: { slug: 'nespresso-essenza-mini' },
+  })
+  if (!coffeeMachine) {
+    coffeeMachine = await prisma.product.create({
     data: {
       name: '네스프레소 에센자 미니',
       slug: 'nespresso-essenza-mini',
@@ -225,6 +259,7 @@ async function main() {
       },
     },
   })
+  }
 
   console.log('✅ 상품 생성 완료')
 
@@ -237,47 +272,62 @@ async function main() {
   })
 
   for (const variant of allVariants) {
-    await prisma.inventory.create({
-      data: {
-        variantId: variant.id,
-        quantity: Math.floor(Math.random() * 50) + 10, // 10-59개 랜덤 재고
-        reservedQuantity: 0,
-        lowStockThreshold: 10,
-        location: '메인 창고',
-      },
+    const existingInventory = await prisma.inventory.findUnique({
+      where: { variantId: variant.id },
     })
+    if (!existingInventory) {
+      await prisma.inventory.create({
+        data: {
+          variantId: variant.id,
+          quantity: Math.floor(Math.random() * 50) + 10, // 10-59개 랜덤 재고
+          reservedQuantity: 0,
+          lowStockThreshold: 10,
+          location: '메인 창고',
+        },
+      })
+    }
   }
 
   console.log('✅ 재고 데이터 생성 완료')
 
-  // 4. 쿠폰 생성
+  // 4. 쿠폰 생성 (이미 있으면 건너뛰기)
   console.log('🎫 쿠폰 생성 중...')
 
-  await prisma.coupon.create({
-    data: {
-      code: 'WELCOME10',
-      name: '신규 가입 10% 할인',
-      description: '첫 구매 시 10% 할인',
-      type: 'PERCENTAGE',
-      value: 10,
-      minimumAmount: 50000,
-      maximumDiscount: 50000,
-      usageLimit: 1000,
-      isActive: true,
-    },
+  let welcomeCoupon = await prisma.coupon.findUnique({
+    where: { code: 'WELCOME10' },
   })
+  if (!welcomeCoupon) {
+    await prisma.coupon.create({
+      data: {
+        code: 'WELCOME10',
+        name: '신규 가입 10% 할인',
+        description: '첫 구매 시 10% 할인',
+        type: 'PERCENTAGE',
+        value: 10,
+        minimumAmount: 50000,
+        maximumDiscount: 50000,
+        usageLimit: 1000,
+        isActive: true,
+      },
+    })
+  }
 
-  await prisma.coupon.create({
-    data: {
-      code: 'SAVE5000',
-      name: '5,000원 할인',
-      description: '30,000원 이상 구매 시 5,000원 할인',
-      type: 'FIXED_AMOUNT',
-      value: 5000,
-      minimumAmount: 30000,
-      isActive: true,
-    },
+  let saveCoupon = await prisma.coupon.findUnique({
+    where: { code: 'SAVE5000' },
   })
+  if (!saveCoupon) {
+    await prisma.coupon.create({
+      data: {
+        code: 'SAVE5000',
+        name: '5,000원 할인',
+        description: '30,000원 이상 구매 시 5,000원 할인',
+        type: 'FIXED_AMOUNT',
+        value: 5000,
+        minimumAmount: 30000,
+        isActive: true,
+      },
+    })
+  }
 
   console.log('✅ 쿠폰 생성 완료')
 

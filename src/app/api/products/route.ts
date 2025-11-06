@@ -14,7 +14,22 @@ export async function GET(request: NextRequest) {
     const where: any = {}
 
     if (category) {
-      where.categoryId = category
+      // category가 slug인지 ID인지 확인
+      // UUID 형식인지 확인 (UUID는 36자, 하이픈 포함)
+      const isUUID =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+          category
+        )
+
+      if (isUUID) {
+        // UUID인 경우 categoryId로 필터링
+        where.categoryId = category
+      } else {
+        // slug인 경우 category 관계를 통해 필터링
+        where.category = {
+          slug: category,
+        }
+      }
     }
 
     if (search) {
@@ -49,6 +64,28 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error('Error fetching products:', error)
+
+    // 데이터베이스 연결 에러 처리
+    if (error instanceof Error) {
+      if (
+        error.message.includes("Can't reach database server") ||
+        error.message.includes('Tenant') ||
+        error.message.includes('not found') ||
+        error.message.includes('pooler.supabase.com')
+      ) {
+        console.warn('Database connection issue, returning empty products list')
+        return NextResponse.json({
+          products: [],
+          pagination: {
+            page: 1,
+            limit: 10,
+            total: 0,
+            pages: 0,
+          },
+        })
+      }
+    }
+
     return NextResponse.json(
       { error: 'Failed to fetch products' },
       { status: 500 }

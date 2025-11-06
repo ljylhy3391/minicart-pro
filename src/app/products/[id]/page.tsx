@@ -4,9 +4,10 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { UserMenu } from '@/components/auth/user-menu'
+import { Header } from '@/components/layout/header'
 import Link from 'next/link'
 import Image from 'next/image'
+import { Truck, Star, Shield } from 'lucide-react'
 
 interface Product {
   id: string
@@ -154,22 +155,17 @@ export default function ProductDetailPage() {
     }
   }
 
+  const calculateDiscount = () => {
+    if (!product) return 0
+    const originalPrice = product.price * 1.2
+    const discount = ((originalPrice - product.price) / originalPrice) * 100
+    return Math.round(discount)
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <header className="border-b bg-white shadow-sm">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="flex h-16 items-center justify-between">
-              <Link
-                href="/products"
-                className="text-xl font-bold text-gray-900"
-              >
-                Minicart Pro
-              </Link>
-              <UserMenu />
-            </div>
-          </div>
-        </header>
+        <Header />
         <div className="flex items-center justify-center py-12">
           <div className="text-lg text-gray-600">상품을 불러오는 중...</div>
         </div>
@@ -180,19 +176,7 @@ export default function ProductDetailPage() {
   if (error || !product) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <header className="border-b bg-white shadow-sm">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="flex h-16 items-center justify-between">
-              <Link
-                href="/products"
-                className="text-xl font-bold text-gray-900"
-              >
-                Minicart Pro
-              </Link>
-              <UserMenu />
-            </div>
-          </div>
-        </header>
+        <Header />
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           <div className="rounded-md border border-red-200 bg-red-50 p-4">
             <p className="text-red-800">{error}</p>
@@ -205,38 +189,12 @@ export default function ProductDetailPage() {
     )
   }
 
+  const discount = calculateDiscount()
+  const originalPrice = Math.round(product.price * 1.2)
+
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* 헤더 */}
-      <header className="border-b bg-white shadow-sm">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex h-16 items-center justify-between">
-            <div className="flex items-center space-x-8">
-              <Link href="/" className="text-xl font-bold text-gray-900">
-                Minicart Pro
-              </Link>
-              <nav className="hidden space-x-6 md:flex">
-                <Link href="/products" className="font-medium text-gray-900">
-                  상품
-                </Link>
-                <Link
-                  href="/cart"
-                  className="text-gray-600 hover:text-gray-900"
-                >
-                  장바구니
-                </Link>
-                <Link
-                  href="/orders"
-                  className="text-gray-600 hover:text-gray-900"
-                >
-                  주문내역
-                </Link>
-              </nav>
-            </div>
-            <UserMenu />
-          </div>
-        </div>
-      </header>
+      <Header />
 
       {/* 메인 컨텐츠 */}
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -295,18 +253,83 @@ export default function ProductDetailPage() {
           {/* 상품 정보 */}
           <div className="space-y-6">
             <div>
-              <div className="mb-2">
-                <span className="rounded bg-blue-50 px-2 py-1 text-sm text-blue-600">
+              {/* 카테고리 & 배송 정보 */}
+              <div className="mb-3 flex items-center gap-3">
+                <span className="rounded-md bg-gray-100 px-3 py-1 text-sm text-gray-700">
                   {product.category.name}
                 </span>
+                <div className="flex items-center gap-1 text-coupang">
+                  <Truck className="h-4 w-4" />
+                  <span className="text-sm font-medium">로켓배송</span>
+                </div>
               </div>
-              <h1 className="mb-4 text-3xl font-bold text-gray-900">
+
+              {/* 상품명 */}
+              <h1 className="mb-4 text-2xl font-bold text-gray-900 md:text-3xl">
                 {product.name}
               </h1>
-              <div className="mb-4 text-3xl font-bold text-gray-900">
-                {formatPrice(calculateTotalPrice())}
+
+              {/* 평점 */}
+              <div className="mb-4 flex items-center gap-2">
+                <div className="flex items-center">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Star
+                      key={star}
+                      className="h-5 w-5 fill-yellow-400 text-yellow-400"
+                    />
+                  ))}
+                </div>
+                <span className="text-sm text-gray-600">4.5 (123개 리뷰)</span>
               </div>
-              <p className="leading-relaxed text-gray-600">
+
+              {/* 가격 */}
+              <div className="mb-6 space-y-2 border-b border-gray-200 pb-6">
+                {discount > 0 && (
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl font-bold text-gray-400 line-through">
+                      {formatPrice(originalPrice)}
+                    </span>
+                    <span className="rounded-md bg-red-50 px-3 py-1 text-lg font-bold text-coupang">
+                      {discount}% 할인
+                    </span>
+                  </div>
+                )}
+                <div className="flex items-baseline gap-2">
+                  <span className="text-4xl font-bold text-gray-900">
+                    {formatPrice(calculateTotalPrice())}
+                  </span>
+                  {quantity > 1 && (
+                    <span className="text-sm text-gray-500">
+                      (단가: {formatPrice(calculateTotalPrice() / quantity)})
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* 배송 및 혜택 정보 */}
+              <div className="mb-6 space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-4">
+                <div className="flex items-start gap-3">
+                  <Truck className="h-5 w-5 text-coupang mt-0.5" />
+                  <div>
+                    <div className="font-medium text-gray-900">로켓배송</div>
+                    <div className="text-sm text-gray-600">
+                      내일(토) 1/18 도착 예정
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Shield className="h-5 w-5 text-coupang mt-0.5" />
+                  <div>
+                    <div className="font-medium text-gray-900">로켓와우 회원</div>
+                    <div className="text-sm text-gray-600">
+                      최대 5% 적립 + 무료배송
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 상품 설명 */}
+              <p className="leading-relaxed text-gray-700">
                 {product.description}
               </p>
             </div>
@@ -383,17 +406,20 @@ export default function ProductDetailPage() {
             </div>
 
             {/* 액션 버튼 */}
-            <div className="flex space-x-4">
-              <Button onClick={handleAddToCart} className="flex-1" size="lg">
-                장바구니에 추가
+            <div className="sticky bottom-0 space-y-3 border-t border-gray-200 bg-white pt-6">
+              <Button
+                onClick={handleAddToCart}
+                className="w-full bg-gray-800 text-white hover:bg-gray-900"
+                size="lg"
+              >
+                장바구니에 담기
               </Button>
               <Button
                 onClick={handleBuyNow}
-                variant="outline"
-                className="flex-1"
+                className="w-full bg-coupang text-white hover:bg-coupang-dark"
                 size="lg"
               >
-                바로 구매
+                바로 구매하기
               </Button>
             </div>
 

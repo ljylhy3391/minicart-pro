@@ -28,13 +28,14 @@ export async function GET(
                 product: {
                   include: {
                     images: true,
+                    category: true,
                   },
                 },
               },
             },
           },
         },
-        payment: true,
+        payments: true,
       },
     })
 
@@ -48,40 +49,51 @@ export async function GET(
     }
 
     // 응답 데이터 변환
+    const payment = order.payments && order.payments.length > 0 ? order.payments[0] : null
+    
     const orderData = {
       id: order.id,
       orderNumber: order.orderNumber,
       status: order.status,
+      subtotal: Number(order.subtotal),
+      taxAmount: Number(order.taxAmount),
+      shippingAmount: Number(order.shippingAmount),
+      discountAmount: Number(order.discountAmount),
       totalAmount: Number(order.totalAmount),
       items: order.orderItems.map((item) => ({
         id: item.id,
         quantity: item.quantity,
         price: Number(item.price),
-        selectedVariants: item.selectedVariants,
-        product: {
-          id: item.variant.product.id,
-          name: item.productName,
-          description: item.variant.product.description,
-          images: item.variant.product.images.map((img) => ({
-            id: img.id,
-            url: img.url,
-            alt: img.alt,
-          })),
-        },
+        totalPrice: Number(item.totalPrice),
+        productName: item.productName,
+        variantName: item.variantName,
+        sku: item.sku,
+        product: item.variant?.product
+          ? {
+              id: item.variant.product.id,
+              name: item.variant.product.name,
+              description: item.variant.product.description,
+              images: item.variant.product.images.map((img) => ({
+                id: img.id,
+                url: img.url,
+                alt: img.altText || '',
+              })),
+            }
+          : null,
       })),
       shippingAddress: order.shippingAddress,
-      paymentMethod: order.paymentMethod,
-      paymentStatus: order.payment?.status || null,
-      payment: order.payment
+      billingAddress: order.billingAddress,
+      paymentStatus: payment?.status || null,
+      payment: payment
         ? {
-            id: order.payment.id,
-            amount: Number(order.payment.amount),
-            status: order.payment.status,
-            paymentMethod: order.payment.paymentMethod,
-            refundAmount: order.payment.refundAmount
-              ? Number(order.payment.refundAmount)
+            id: payment.id,
+            amount: Number(payment.amount),
+            status: payment.status,
+            paymentMethod: payment.paymentMethod,
+            refundAmount: payment.refundAmount
+              ? Number(payment.refundAmount)
               : undefined,
-            refundedAt: order.payment.refundedAt?.toISOString(),
+            refundedAt: payment.refundedAt?.toISOString(),
           }
         : undefined,
       createdAt: order.createdAt.toISOString(),
@@ -117,6 +129,9 @@ export async function PATCH(
     // 주문 정보 조회
     const order = await prisma.order.findUnique({
       where: { id: orderId },
+      include: {
+        payments: true,
+      },
     })
 
     if (!order) {
@@ -138,13 +153,17 @@ export async function PATCH(
     })
 
     // 결제가 있다면 결제 상태도 업데이트
-    if (order.paymentId) {
-      await prisma.payment.update({
-        where: { orderId },
-        data: {
-          status: status === 'CANCELLED' ? 'CANCELLED' : order.status,
-        },
-      })
+    if (order.payments && order.payments.length > 0) {
+      await Promise.all(
+        order.payments.map((payment) =>
+          prisma.payment.update({
+            where: { id: payment.id },
+            data: {
+              status: status === 'CANCELLED' ? 'CANCELLED' : status,
+            },
+          })
+        )
+      )
     }
 
     return NextResponse.json({

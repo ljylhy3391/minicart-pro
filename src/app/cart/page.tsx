@@ -32,7 +32,7 @@ interface CartItem {
 }
 
 interface Cart {
-  id: string
+  id: string | null
   items: CartItem[]
 }
 
@@ -57,7 +57,18 @@ export default function CartPage() {
       }
 
       const data = await response.json()
-      setCart(data)
+      
+      // 카트가 없거나 에러가 있는 경우 처리
+      if (data.error) {
+        throw new Error(data.error)
+      }
+      
+      // 빈 카트 객체 처리
+      if (!data || !data.items) {
+        setCart({ id: null, items: [] })
+      } else {
+        setCart(data)
+      }
       setError(null)
     } catch (err) {
       setError(

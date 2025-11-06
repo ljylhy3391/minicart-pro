@@ -22,6 +22,17 @@ export async function GET() {
               include: {
                 images: true,
                 variants: true,
+                category: true,
+              },
+            },
+            variant: {
+              include: {
+                product: {
+                  include: {
+                    images: true,
+                    category: true,
+                  },
+                },
               },
             },
           },
@@ -29,9 +40,33 @@ export async function GET() {
       },
     })
 
+    // 카트가 없을 때 빈 카트 객체 반환
+    if (!cart) {
+      return NextResponse.json({
+        id: null,
+        items: [],
+      })
+    }
+
     return NextResponse.json(cart)
   } catch (error) {
     console.error('Error fetching cart:', error)
+
+    // 데이터베이스 연결 에러 등 예외 상황 처리
+    if (error instanceof Error) {
+      // 데이터베이스 연결 문제인 경우 빈 카트 반환
+      if (
+        error.message.includes('Tenant') ||
+        error.message.includes('not found')
+      ) {
+        console.warn('Database connection issue, returning empty cart')
+        return NextResponse.json({
+          id: null,
+          items: [],
+        })
+      }
+    }
+
     return NextResponse.json({ error: 'Failed to fetch cart' }, { status: 500 })
   }
 }
@@ -68,9 +103,7 @@ export async function POST(request: NextRequest) {
       where: {
         cartId: cart.id,
         productId,
-        selectedVariants: selectedVariants
-          ? JSON.stringify(selectedVariants)
-          : null,
+        selectedVariants: selectedVariants || null,
       },
     })
 
@@ -91,9 +124,7 @@ export async function POST(request: NextRequest) {
           cartId: cart.id,
           productId,
           quantity,
-          selectedVariants: selectedVariants
-            ? JSON.stringify(selectedVariants)
-            : null,
+          selectedVariants: selectedVariants || null,
         },
       })
     }

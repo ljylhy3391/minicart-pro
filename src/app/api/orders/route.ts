@@ -18,16 +18,20 @@ export async function GET(request: NextRequest) {
     const orders = await prisma.order.findMany({
       where: { userId: session.user.id },
       include: {
-        items: {
+        orderItems: {
           include: {
-            product: {
+            variant: {
               include: {
-                images: true,
+                product: {
+                  include: {
+                    images: true,
+                  },
+                },
               },
             },
           },
         },
-        payment: true,
+        payments: true,
       },
       skip: (page - 1) * limit,
       take: limit,
@@ -75,36 +79,57 @@ export async function POST(request: NextRequest) {
         where: { id: item.productId },
       })
       if (product) {
-        totalAmount += product.price * item.quantity
+        totalAmount += Number(product.price) * item.quantity
       }
     }
+
+    // 주문번호 생성
+    const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
 
     // 주문 생성
     const order = await prisma.order.create({
       data: {
+        orderNumber,
         userId: session.user.id,
         status: 'PENDING',
+        subtotal: totalAmount,
         totalAmount,
-        shippingAddress,
-        paymentMethod,
-        items: {
-          create: items.map((item: any) => ({
-            productId: item.productId,
-            quantity: item.quantity,
-            price: item.price,
-          })),
+        shippingAddress: shippingAddress || {},
+        orderItems: {
+          create: await Promise.all(
+            items.map(async (item: any) => {
+              const product = await prisma.product.findUnique({
+                where: { id: item.productId },
+                include: { images: true },
+              })
+              return {
+                productName: product?.name || 'Unknown Product',
+                variantName: item.variantName || null,
+                price: product ? Number(product.price) : 0,
+                quantity: item.quantity,
+                totalPrice: product ? Number(product.price) * item.quantity : 0,
+                variantId: item.variantId || null,
+                sku: item.sku || null,
+              }
+            })
+          ),
         },
       },
       include: {
-        items: {
+        orderItems: {
           include: {
-            product: {
+            variant: {
               include: {
-                images: true,
+                product: {
+                  include: {
+                    images: true,
+                  },
+                },
               },
             },
           },
         },
+        payments: true,
       },
     })
 

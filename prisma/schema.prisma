@@ -6,25 +6,25 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DATABASE_URL")
 }
 
 // NextAuth.js 테이블들
 model Account {
-  id                String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId            String  @map("user_id") @db.Uuid
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId            String   @map("user_id") @db.Uuid
   type              String
   provider          String
-  providerAccountId String  @map("provider_account_id")
-  refresh_token     String? @map("refresh_token") @db.Text
-  access_token      String? @map("access_token") @db.Text
-  expires_at        Int?    @map("expires_at")
-  token_type        String? @map("token_type")
+  providerAccountId String   @map("provider_account_id")
+  refresh_token     String?  @map("refresh_token") @db.Text
+  access_token      String?  @map("access_token") @db.Text
+  expires_at        Int?     @map("expires_at")
+  token_type        String?  @map("token_type")
   scope             String?
-  id_token          String? @map("id_token") @db.Text
-  session_state     String? @map("session_state")
+  id_token          String?  @map("id_token") @db.Text
+  session_state     String?  @map("session_state")
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")
 
@@ -41,7 +41,7 @@ model Session {
   expires      DateTime
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
-  
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("sessions")
@@ -68,11 +68,11 @@ model User {
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
-  accounts Account[]
-  sessions Session[]
-  orders   Order[]
-  reviews  Review[]
-  cart     Cart?
+  accounts    Account[]
+  sessions    Session[]
+  orders      Order[]
+  reviews     Review[]
+  cart        Cart?
   couponUsage CouponUsage[]
 
   @@map("users")
@@ -86,60 +86,61 @@ enum UserRole {
 
 // 상품 관련 테이블
 model Category {
-  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name        String
-  slug        String    @unique
-  description String?   @db.Text
-  imageUrl    String?   @map("image_url") @db.Text
-  parentId    String?   @map("parent_id") @db.Uuid
-  sortOrder   Int       @default(0) @map("sort_order")
-  isActive    Boolean   @default(true) @map("is_active")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+  slug        String   @unique
+  description String?  @db.Text
+  imageUrl    String?  @map("image_url") @db.Text
+  parentId    String?  @map("parent_id") @db.Uuid
+  sortOrder   Int      @default(0) @map("sort_order")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
-  products  Product[]
-  parent    Category?  @relation("CategoryParent", fields: [parentId], references: [id])
-  children  Category[] @relation("CategoryParent")
+  products Product[]
+  parent   Category?  @relation("CategoryParent", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryParent")
 
   @@map("categories")
 }
 
 model Product {
-  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name            String
-  slug            String         @unique
-  description     String?        @db.Text
+  id               String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name             String
+  slug             String        @unique
+  description      String?       @db.Text
   shortDescription String?       @map("short_description") @db.Text
-  price           Decimal        @db.Decimal(10, 2)
-  comparePrice    Decimal?       @map("compare_price") @db.Decimal(10, 2)
-  costPrice       Decimal?       @map("cost_price") @db.Decimal(10, 2)
-  sku             String?        @unique
-  barcode         String?
-  weight          Decimal?       @db.Decimal(10, 2)
-  dimensions      Json?
-  categoryId      String?        @map("category_id") @db.Uuid
-  brand           String?
-  status          ProductStatus  @default(DRAFT)
-  featured        Boolean        @default(false)
-  metaTitle       String?        @map("meta_title")
-  metaDescription String?        @map("meta_description") @db.Text
-  tags            String[]
-  createdAt       DateTime       @default(now()) @map("created_at")
-  updatedAt       DateTime       @updatedAt @map("updated_at")
+  price            Decimal       @db.Decimal(10, 2)
+  comparePrice     Decimal?      @map("compare_price") @db.Decimal(10, 2)
+  costPrice        Decimal?      @map("cost_price") @db.Decimal(10, 2)
+  sku              String?       @unique
+  barcode          String?
+  weight           Decimal?      @db.Decimal(10, 2)
+  dimensions       Json?
+  categoryId       String?       @map("category_id") @db.Uuid
+  brand            String?
+  status           ProductStatus @default(DRAFT)
+  featured         Boolean       @default(false)
+  metaTitle        String?       @map("meta_title")
+  metaDescription  String?       @map("meta_description") @db.Text
+  tags             String[]
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
 
-  category    Category?        @relation(fields: [categoryId], references: [id])
-  images      ProductImage[]
-  variants    ProductVariant[]
-  reviews     Review[]
+  category  Category?        @relation(fields: [categoryId], references: [id])
+  images    ProductImage[]
+  variants  ProductVariant[]
+  reviews   Review[]
+  cartItems CartItem[]
 
   @@map("products")
 }
 
 enum ProductStatus {
-  DRAFT     @map("draft")
-  ACTIVE    @map("active")
-  INACTIVE  @map("inactive")
-  ARCHIVED  @map("archived")
+  DRAFT    @map("draft")
+  ACTIVE   @map("active")
+  INACTIVE @map("inactive")
+  ARCHIVED @map("archived")
 }
 
 model ProductImage {
@@ -172,10 +173,10 @@ model ProductVariant {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  product     Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
-  inventory   Inventory?
-  orderItems  OrderItem[]
-  cartItems   CartItem[]
+  product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  inventory  Inventory?
+  orderItems OrderItem[]
+  cartItems  CartItem[]
 
   @@map("product_variants")
 }
@@ -197,27 +198,30 @@ model Inventory {
 
 // 장바구니 테이블
 model Cart {
-  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId     String?   @unique @map("user_id") @db.Uuid
-  sessionId  String?   @unique @map("session_id")
-  createdAt  DateTime  @default(now()) @map("created_at")
-  updatedAt  DateTime  @updatedAt @map("updated_at")
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String?  @unique @map("user_id") @db.Uuid
+  sessionId String?  @unique @map("session_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  user  User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user  User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
   items CartItem[]
 
   @@map("cart")
 }
 
 model CartItem {
-  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  cartId    String   @map("cart_id") @db.Uuid
-  variantId String?  @map("variant_id") @db.Uuid
-  quantity  Int      @default(1)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  cartId           String   @map("cart_id") @db.Uuid
+  productId        String?  @map("product_id") @db.Uuid
+  variantId        String?  @map("variant_id") @db.Uuid
+  selectedVariants Json?    @map("selected_variants")
+  quantity         Int      @default(1)
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
 
-  cart    Cart           @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  cart    Cart            @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product Product?        @relation(fields: [productId], references: [id])
   variant ProductVariant? @relation(fields: [variantId], references: [id])
 
   @@map("cart_items")
@@ -225,33 +229,33 @@ model CartItem {
 
 // 주문 관련 테이블
 model Order {
-  id             String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  orderNumber    String      @unique @map("order_number")
-  userId         String?     @map("user_id") @db.Uuid
-  status         OrderStatus @default(PENDING)
-  subtotal       Decimal     @db.Decimal(10, 2)
-  taxAmount      Decimal     @default(0) @map("tax_amount") @db.Decimal(10, 2)
-  shippingAmount Decimal     @default(0) @map("shipping_amount") @db.Decimal(10, 2)
-  discountAmount Decimal     @default(0) @map("discount_amount") @db.Decimal(10, 2)
-  totalAmount    Decimal     @map("total_amount") @db.Decimal(10, 2)
-  currency       String      @default("KRW")
-  shippingAddress Json       @map("shipping_address")
-  billingAddress Json?       @map("billing_address")
-  notes          String?     @db.Text
-  internalNotes  String?     @map("internal_notes") @db.Text
-  confirmedAt    DateTime?   @map("confirmed_at")
-  shippedAt      DateTime?   @map("shipped_at")
-  deliveredAt    DateTime?   @map("delivered_at")
-  cancelledAt    DateTime?   @map("cancelled_at")
-  refundedAt     DateTime?   @map("refunded_at")
-  createdAt      DateTime    @default(now()) @map("created_at")
-  updatedAt      DateTime    @updatedAt @map("updated_at")
+  id              String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderNumber     String      @unique @map("order_number")
+  userId          String?     @map("user_id") @db.Uuid
+  status          OrderStatus @default(PENDING)
+  subtotal        Decimal     @db.Decimal(10, 2)
+  taxAmount       Decimal     @default(0) @map("tax_amount") @db.Decimal(10, 2)
+  shippingAmount  Decimal     @default(0) @map("shipping_amount") @db.Decimal(10, 2)
+  discountAmount  Decimal     @default(0) @map("discount_amount") @db.Decimal(10, 2)
+  totalAmount     Decimal     @map("total_amount") @db.Decimal(10, 2)
+  currency        String      @default("KRW")
+  shippingAddress Json        @map("shipping_address")
+  billingAddress  Json?       @map("billing_address")
+  notes           String?     @db.Text
+  internalNotes   String?     @map("internal_notes") @db.Text
+  confirmedAt     DateTime?   @map("confirmed_at")
+  shippedAt       DateTime?   @map("shipped_at")
+  deliveredAt     DateTime?   @map("delivered_at")
+  cancelledAt     DateTime?   @map("cancelled_at")
+  refundedAt      DateTime?   @map("refunded_at")
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
 
-  user         User?         @relation(fields: [userId], references: [id])
-  orderItems   OrderItem[]
-  payments     Payment[]
-  reviews      Review[]
-  couponUsage  CouponUsage[]
+  user        User?         @relation(fields: [userId], references: [id])
+  orderItems  OrderItem[]
+  payments    Payment[]
+  reviews     Review[]
+  couponUsage CouponUsage[]
 
   @@map("orders")
 }
@@ -286,58 +290,58 @@ model OrderItem {
 
 // 결제 테이블
 model Payment {
-  id                    String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  orderId               String        @map("order_id") @db.Uuid
-  paymentIntentId       String        @unique @map("payment_intent_id")
-  amount                Decimal       @db.Decimal(10, 2)
-  currency              String        @default("KRW")
-  status                PaymentStatus @default(PENDING)
-  paymentMethod         String?       @map("payment_method")
-  paymentMethodDetails  Json?         @map("payment_method_details")
-  failureReason         String?       @map("failure_reason") @db.Text
-  refundAmount          Decimal?      @map("refund_amount") @db.Decimal(10, 2)
-  refundedAt            DateTime?     @map("refunded_at")
-  refundReason          String?       @map("refund_reason") @db.Text
-  refundId              String?       @map("refund_id")
-  paidAt                DateTime?     @map("paid_at")
-  stripeChargeId        String?       @map("stripe_charge_id")
-  stripeCustomerId      String?       @map("stripe_customer_id")
-  createdAt             DateTime      @default(now()) @map("created_at")
-  updatedAt             DateTime      @updatedAt @map("updated_at")
+  id                   String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId              String        @map("order_id") @db.Uuid
+  paymentIntentId      String        @unique @map("payment_intent_id")
+  amount               Decimal       @db.Decimal(10, 2)
+  currency             String        @default("KRW")
+  status               PaymentStatus @default(PENDING)
+  paymentMethod        String?       @map("payment_method")
+  paymentMethodDetails Json?         @map("payment_method_details")
+  failureReason        String?       @map("failure_reason") @db.Text
+  refundAmount         Decimal?      @map("refund_amount") @db.Decimal(10, 2)
+  refundedAt           DateTime?     @map("refunded_at")
+  refundReason         String?       @map("refund_reason") @db.Text
+  refundId             String?       @map("refund_id")
+  paidAt               DateTime?     @map("paid_at")
+  stripeChargeId       String?       @map("stripe_charge_id")
+  stripeCustomerId     String?       @map("stripe_customer_id")
+  createdAt            DateTime      @default(now()) @map("created_at")
+  updatedAt            DateTime      @updatedAt @map("updated_at")
 
-  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   refunds Refund[]
 
   @@map("payments")
 }
 
 enum PaymentStatus {
-  PENDING    @map("pending")
-  PROCESSING @map("processing")
-  SUCCEEDED  @map("succeeded")
-  FAILED     @map("failed")
-  CANCELLED  @map("cancelled")
-  REFUNDED   @map("refunded")
+  PENDING            @map("pending")
+  PROCESSING         @map("processing")
+  SUCCEEDED          @map("succeeded")
+  FAILED             @map("failed")
+  CANCELLED          @map("cancelled")
+  REFUNDED           @map("refunded")
   PARTIALLY_REFUNDED @map("partially_refunded")
 }
 
 // 쿠폰 테이블
 model Coupon {
-  id             String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  code           String     @unique
-  name           String
-  description    String?    @db.Text
-  type           CouponType
-  value          Decimal    @db.Decimal(10, 2)
-  minimumAmount  Decimal?   @map("minimum_amount") @db.Decimal(10, 2)
-  maximumDiscount Decimal?  @map("maximum_discount") @db.Decimal(10, 2)
-  usageLimit     Int?       @map("usage_limit")
-  usedCount      Int        @default(0) @map("used_count")
-  isActive       Boolean    @default(true) @map("is_active")
-  startsAt       DateTime?  @map("starts_at")
-  expiresAt      DateTime?  @map("expires_at")
-  createdAt      DateTime   @default(now()) @map("created_at")
-  updatedAt      DateTime   @updatedAt @map("updated_at")
+  id              String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code            String     @unique
+  name            String
+  description     String?    @db.Text
+  type            CouponType
+  value           Decimal    @db.Decimal(10, 2)
+  minimumAmount   Decimal?   @map("minimum_amount") @db.Decimal(10, 2)
+  maximumDiscount Decimal?   @map("maximum_discount") @db.Decimal(10, 2)
+  usageLimit      Int?       @map("usage_limit")
+  usedCount       Int        @default(0) @map("used_count")
+  isActive        Boolean    @default(true) @map("is_active")
+  startsAt        DateTime?  @map("starts_at")
+  expiresAt       DateTime?  @map("expires_at")
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
 
   usages CouponUsage[]
 
@@ -345,8 +349,8 @@ model Coupon {
 }
 
 enum CouponType {
-  PERCENTAGE    @map("percentage")
-  FIXED_AMOUNT  @map("fixed_amount")
+  PERCENTAGE   @map("percentage")
+  FIXED_AMOUNT @map("fixed_amount")
 }
 
 model CouponUsage {
@@ -357,9 +361,9 @@ model CouponUsage {
   discountAmount Decimal  @map("discount_amount") @db.Decimal(10, 2)
   usedAt         DateTime @default(now()) @map("used_at")
 
-  coupon Coupon  @relation(fields: [couponId], references: [id], onDelete: Cascade)
-  user   User?   @relation(fields: [userId], references: [id])
-  order  Order?  @relation(fields: [orderId], references: [id])
+  coupon Coupon @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  user   User?  @relation(fields: [userId], references: [id])
+  order  Order? @relation(fields: [orderId], references: [id])
 
   @@map("coupon_usage")
 }
@@ -389,16 +393,16 @@ model Review {
 
 // 환불 테이블
 model Refund {
-  id           String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  paymentId    String        @map("payment_id") @db.Uuid
-  amount       Decimal       @db.Decimal(10, 2)
-  reason       String        @db.Text
-  status       RefundStatus  @default(PENDING)
-  refundId     String?       @unique @map("refund_id")
-  processedAt  DateTime?     @map("processed_at")
+  id            String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  paymentId     String       @map("payment_id") @db.Uuid
+  amount        Decimal      @db.Decimal(10, 2)
+  reason        String       @db.Text
+  status        RefundStatus @default(PENDING)
+  refundId      String?      @unique @map("refund_id")
+  processedAt   DateTime?    @map("processed_at")
   failureReason String?      @map("failure_reason") @db.Text
-  createdAt    DateTime      @default(now()) @map("created_at")
-  updatedAt    DateTime      @updatedAt @map("updated_at")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
 
   payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
 
